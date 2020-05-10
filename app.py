@@ -18,8 +18,8 @@ Base = automap_base()
 # reflect the tables
 Base.prepare(engine, reflect=True)
 # Save references to the tables
-Measurement = Base.classes.measurements
-Station = Base.classes.stations
+Measurement = Base.classes.measurement
+Station = Base.classes.station
 # Create session from Python to the DB
 session = Session(engine)
 
@@ -34,14 +34,16 @@ app = Flask(__name__)
 @app.route("/")
 def home():
     return (
-        f"Welcome Hawaii's Climate Data<br/>"
+        f"Welcome to Hawaii's Climate Data<br/>"
+        f"<br/>"
         f"Available Routes:<br/>"
-        f"Precipitation data between {first_date} and {last_date}: /api/v1.0/precipitation<br/>"
-        f"Stations in Dataset: /api/v1.0/stations<br/>"
-        f"Temperature observations from the most active station ({most_active_station}) \n between {first_date} and {last_date}: /api/v1.0/tobs<br/>"
-        f"Temperature observations starting at <start>* date: /api/v1.0/<start><br/>"
-        f"Temperature observations starting at <start>* date and ending at <end>* date: /api/v1.0/<start>/<end><br/>"
-        f"* please format YYYY-MM-DD"
+        f"/api/v1.0/precipitation = Precipitation data between {first_date} and {last_date}.<br/>"
+        f"/api/v1.0/stations = Stations in dataset.<br/>"
+        f"/api/v1.0/tobs = Temperature observations from the most active station ({most_active_station}) \n between {first_date} and {last_date}.<br/>"
+        f"/api/v1.0/startdate* = Temperature observations from startdate* to most recent collection date.<br/>"
+        f"/api/v1.0/startdate*/enddate* = Temperature observations from startdate* to enddate*. <br/>"
+        f"<br/>"
+        f"*please format YYYY-MM-DD"
     )
 
 @app.route("/api/v1.0/precipitation")
@@ -60,7 +62,7 @@ def precipitation():
 @app.route("/api/v1.0/stations")
 def stations():
     # Return a JSON list of stations from the dataset
-    station_result = session.query(func.distinct(Station.station,Station.name)).all()
+    station_result = session.query(func.distinct(Station.station)).all()
     session.close()
     return jsonify(list(np.ravel(station_result)))
 
@@ -71,7 +73,7 @@ def tobs():
     tobs_result = session.query(Measurement.date,Measurement.tobs).filter(Measurement.station == most_active_station)\
         .filter(Measurement.date >= first_date).all()
     session.close()
-    return jsonify(list(np.ravel(tobs_result)))
+    return jsonify(tobs_result)
 
 @app.route("/api/v1.0/<start>")
 def start(start):
@@ -81,7 +83,12 @@ def start(start):
     start_tobs_results = session.query(func.min(Measurement.tobs),func.avg(Measurement.tobs),func.max(Measurement.tobs))\
         .filter(Measurement.date >= start).all()
     session.close()
-    return jsonify(start_tobs_results)
+    start_result_dict = {}
+    start_result_dict['minimum temperature (F)'] = start_tobs_results[0][0]
+    start_result_dict['average temperature (F)'] = round(start_tobs_results[0][1],2)
+    start_result_dict['maximum temperature (F)'] = start_tobs_results[0][2]
+
+    return jsonify(start_result_dict)
 
 @app.route("/api/v1.0/<start>/<end>")
 def startend(start,end):
@@ -90,7 +97,12 @@ def startend(start,end):
     start_end_tobs_results = session.query(func.min(Measurement.tobs),func.avg(Measurement.tobs),func.max(Measurement.tobs))\
         .filter(Measurement.date >= start).filter(Measurement.date <= end).all()
     session.close()
-    return jsonify(start_end_tobs_results)
+    start_end_result_dict = {}
+    start_end_result_dict['minimum temperature (F)'] = start_end_tobs_results[0][0]
+    start_end_result_dict['average temperature (F)'] = round(start_end_tobs_results[0][1],2)
+    start_end_result_dict['maximum temperature (F)'] = start_end_tobs_results[0][2]
+
+    return jsonify(start_end_result_dict)
 
 # Define main behavior
 if __name__ == "__main__":
