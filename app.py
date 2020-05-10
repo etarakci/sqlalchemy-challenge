@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 
 # set up database
-engine = create_engine('sqlite:///hawaii.sqlite', connect_args={'check_same_thread': False})
+engine = create_engine('sqlite:///Resources/hawaii.sqlite')
 # reflect an existing database into a new model
 Base = automap_base()
 # reflect the tables
